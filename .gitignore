@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Environment variables - NEVER commit these
+.env
+*.env
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# ML artifacts
+*.pkl
+*.h5
+*.pt
+*.pth
+weights/
+!weights/.gitkeep
+
+# Node / React
+node_modules/
+client/dist/
+client/build/
+.npm
+
+# Docker
+.docker/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Alembic - keep versions folder but not generated files tracking
+# (we DO want to commit migration files, so don't ignore alembic/)

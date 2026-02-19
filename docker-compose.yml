@@ -1,0 +1,103 @@
+version: "3.9"
+
+networks:
+  gesture_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  ml_weights:
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: gesture_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - gesture_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: gesture_ml
+    restart: unless-stopped
+    environment:
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT}
+      - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - ml_weights:/app/weights
+      - ./ml-service:/app
+    ports:
+      - "8001:8001"
+    networks:
+      - gesture_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gesture_backend
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - ML_SERVICE_URL=${ML_SERVICE_URL}
+      - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    ports:
+      - "8000:8000"
+    networks:
+      - gesture_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: gesture_client
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WS_URL=${VITE_WS_URL}
+    ports:
+      - "5173:5173"
+    networks:
+      - gesture_network
+    depends_on:
+      - backend
+    volumes:
+      - ./client:/app
+      - /app/node_modules
